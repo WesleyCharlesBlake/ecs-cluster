@@ -1,0 +1,6 @@
+---
+- name: Wordpress | Installation
+  hosts: localhost
+
+  roles:
+    - wordpress
