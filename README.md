@@ -74,7 +74,7 @@ The networking components set the ground work for the rest of the resources. I c
 # What problems did you have
 The ECS module with Ansible has a bug, which hindered the deployment strategy of using Packer with an Ansible provisioner.
 
-#### (https://github.com/WesleyCharlesBlake/ecs-cluster/tree/v0.0.1)[v0.0.1] is the release with Packer/Ansible/TerraForm
+#### NB! [v0.0.1](https://github.com/WesleyCharlesBlake/ecs-cluster/tree/v0.0.1) is the release with Packer/Ansible/TerraForm
 
 The error:
 ```
