@@ -8,11 +8,16 @@ provider "aws" {
 variable "aws_amis" {
   type = "map"
   default = {
-    us-east-1 = "ami-e4e3fd8e"
+    dev     = "ami-e4e3fd8e"
+    staging = "ami-e4e3fd8e"
+    prod    = "ami-e4e3fd8e" 
   }
 }
 
 #### Networking
+
+data "aws_availability_zones" "available" {}
+
 
 resource "aws_vpc" "ecs-vpc" {
     cidr_block           = "10.0.0.0/16"
@@ -23,10 +28,16 @@ resource "aws_internet_gateway" "ecs-igw" {
     vpc_id = "${aws_vpc.ecs-vpc.id}"
 }
 
-resource "aws_subnet" "ecs-public" {
+resource "aws_subnet" "ecs-public-1" {
     vpc_id             = "${aws_vpc.ecs-vpc.id}"
     cidr_block         = "10.0.1.0/24"
-    availability_zones = "${var.availability_zones}"
+    availability_zone  = "${data.aws_availability_zones.available.names[0]}"
+}
+
+resource "aws_subnet" "ecs-public-2" {
+    vpc_id             = "${aws_vpc.ecs-vpc.id}"
+    cidr_block         = "10.0.2.0/24"
+    availability_zone  = "${data.aws_availability_zones.available.names[1]}"
 }
 
 resource "aws_route_table" "ecs-public" {
@@ -38,7 +49,12 @@ resource "aws_route_table" "ecs-public" {
 }
 
 resource "aws_route_table_association" "ecs-public" {
-    subnet_id      = "${aws_subnet.ecs-public.id}"
+    subnet_id      = "${aws_subnet.ecs-public-1.id}"
+    route_table_id = "${aws_route_table.ecs-public.id}"
+}
+
+resource "aws_route_table_association" "ecs-public-2" {
+    subnet_id      = "${aws_subnet.ecs-public-2.id}"
     route_table_id = "${aws_route_table.ecs-public.id}"
 }
 
@@ -114,7 +130,7 @@ resource "aws_alb_target_group" "ecs" {
 
 resource "aws_alb" "ecs-alb" {
   name            = "ecs-alb"
-  subnets         = ["${aws_subnet.ecs-public.*.id}"]
+  subnets         = ["${aws_subnet.ecs-public-1.*.id}"]
   security_groups = ["${aws_security_group.ecs-lb-sg.id}"]
 }
 
@@ -138,17 +154,16 @@ resource "aws_ecs_cluster" "wp-ecs" {
 #### Auto Scaling Launch Config
 resource "aws_launch_configuration" "ecs" {
   name                 = "ecs"
-  image_id             = "${var.amis}"
+  image_id             = "$${var.aws_amis[dev]}"
   instance_type        = "${var.instance_type}"
   user_data            = "#!/bin/bash\necho ECS_CLUSTER=${aws_ecs_cluster.wp-ecs.name} > /etc/ecs/ecs.config"
-  key_name             = key_name= "${var.key_name}"
+  key_name             = "${var.key_name}"
+  security_groups      = ["${aws_security_group.ecs-ec2-sg.id}"]
 }
 
 #### Autoscaling group.
  resource "aws_autoscaling_group" "ecs" {
   name                 = "ecs-asg"
-  availability_zones   = ["${split(",", var.availability_zones)}"]
-  security_groups      = ["${aws_security_group.ecs-ec2-sg.id}"]
   launch_configuration = "${aws_launch_configuration.ecs.name}"
   min_size             = 1
   max_size             = 10
@@ -157,7 +172,7 @@ resource "aws_launch_configuration" "ecs" {
 
 resource "aws_ecs_task_definition" "wordpress" {
   family = "wordpress"
-  container_definitions = "${file("task-definitions/service.json")}"
+  container_definitions = "${file("task-definitions/wordpress.json")}"
   placement_constraints {
     type       = "memberOf"
     expression = "attribute:ecs.availability-zone in [us-east-1b, us-east-1c]"
@@ -165,12 +180,11 @@ resource "aws_ecs_task_definition" "wordpress" {
 }
 
 resource "aws_ecs_service" "wordpress" {
-  name          = "worpdress"
-  cluster       = "${aws_ecs_cluster.wp-ecs.id}"
-  desired_count = 2
-
-  # Track the latest ACTIVE revision
-  task_definition = "${aws_ecs_task_definition.wordpress.family}:${max("${aws_ecs_task_definition.wordpress.revision}", "${data.aws_ecs_task_definition.wordpress.revision}")}"
+  name            = "worpdress"
+  name            = "family"
+  task_definition = "${aws_ecs_task_definition.wordpress.id}" 
+  cluster         = "${aws_ecs_cluster.wp-ecs.id}"
+  desired_count   = 2
 }
 
 
