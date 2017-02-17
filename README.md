@@ -7,6 +7,7 @@ This is a terraform script that deploys a a complete AWS ECS cluster, with AutoS
 
 # How run your project
 deps:
+
 ```
 # ansible --version
 ansible 2.2.1.0
@@ -15,24 +16,31 @@ ansible 2.2.1.0
 $ terraform --version
 Terraform v0.8.7
 ```
+
 The latest version of TerraForm is needed due to the `data` sources which replaced tempalate file resources in previous versions
 first set your AWS env vars:
+
 ```
 export AWS_ACCESS_KEY=someaccesskeyhas
 export AWS_SECRET_KEY=somemuchlongersecretkeyhasgoeshere
 ```
+
 Then plan:
 
-```terraform plan -out=/path/to/saved.plan```
+```
+terraform plan -out=/path/to/saved.plan
+```
 followed by
-``` terraform apply -state-out=/path/to/saved.plan
+
+```
+terraform apply -state-out=/path/to/saved.plan
 ```
 
 # How components interact between each over
 The scope of this was to create all components from scratch. 17 resources are created:
-```
-Plan: 17 to add, 0 to change, 0 to destroy.
-```
+
+`Plan: 17 to add, 0 to change, 0 to destroy.`
+
 #### Networking
 * aws_vpc.ecs-vpc
 * aws_internet_gateway.ecs-igw
@@ -66,6 +74,8 @@ The networking components set the ground work for the rest of the resources. I c
 # What problems did you have
 The ECS module with Ansible has a bug, which hindered the deployment strategy of using Packer with an Ansible provisioner.
 
+#### (https://github.com/WesleyCharlesBlake/ecs-cluster/tree/v0.0.1)[v0.0.1] is the release with Packer/Ansible/TerraForm
+
 The error:
 ```
  amazon-ebs: TASK [wordpress : Wordpres ECS | task definition] ******************************
@@ -74,7 +84,7 @@ The error:
     amazon-ebs: to retry, use: --limit @/tmp/packer-provisioner-ansible-local/wordpress-ecs.retry
     amazon-ebs:
     amazon-ebs: PLAY RECAP *********************************************************************
-    ```
+```
 I researched this, and found that this exists in the ECS ansible module, and that the ansible module is still in preview, and there are some on going PR's to try and resolve this. This left me with a situation where I could not complete the task at hand according to the given spec, so I decided to use other methods in order to achieve the same result.
 
 
